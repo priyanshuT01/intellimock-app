@@ -1,4 +1,5 @@
-import { pgEnum, pgTable, varchar } from "drizzle-orm/pg-core"
+import { pgEnum, pgTable, text, varchar } from "drizzle-orm/pg-core"
+import { sql } from "drizzle-orm"
 import { createdAt, id, updatedAt } from "../schemaHelpers"
 import { UserTable } from "./user"
 import { relations } from "drizzle-orm"
@@ -17,6 +18,7 @@ export const JobInfoTable = pgTable("job_info", {
   title: varchar(),
   name: varchar().notNull(),
   experienceLevel: experienceLevelEnum().notNull(),
+  technologies: text().array().notNull().default(sql`'{}'::text[]`),
   description: varchar().notNull(),
   userId: varchar()
     .references(() => UserTable.id, { onDelete: "cascade" })

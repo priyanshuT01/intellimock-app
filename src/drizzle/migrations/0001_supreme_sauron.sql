@@ -1,0 +1,1 @@
+ALTER TABLE "job_info" ADD COLUMN "technologies" text[] DEFAULT '{}' NOT NULL;

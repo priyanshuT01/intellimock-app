@@ -23,20 +23,42 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { X } from "lucide-react";
 import { jobInfoSchema } from "../schemas";
 import { formatExperienceLevel } from "../lib/formatters";
 import { LoadingSwap } from "@/components/ui/loading-swap";
 import { createJobInfo, updateJobInfo } from "../actions";
 import { toast } from "sonner";
+import { useState } from "react";
 
 type JobInfoFormData = z.infer<typeof jobInfoSchema>;
+
+// Predefined technology options
+const AVAILABLE_TECHNOLOGIES = [
+  "React",
+  "Next.js",
+  "TypeScript",
+  "JavaScript",
+  "Node.js",
+  "Python",
+  "PostgreSQL",
+  "MongoDB",
+  "Drizzle ORM",
+  "Prisma",
+  "TailwindCSS",
+  "Docker",
+  "AWS",
+  "GraphQL",
+  "REST API",
+] as const;
 
 export function JobInfoForm({
   jobInfo,
 }: {
   jobInfo?: Pick<
     typeof JobInfoTable.$inferSelect,
-    "id" | "name" | "title" | "description" | "experienceLevel"
+    "id" | "name" | "title" | "description" | "experienceLevel" | "technologies"
   >;
 }) {
   const form = useForm<JobInfoFormData>({
@@ -46,8 +68,30 @@ export function JobInfoForm({
       title: null,
       description: "",
       experienceLevel: "junior",
+      technologies: [],
     },
   });
+
+  const [techInput, setTechInput] = useState("");
+  const selectedTechs = form.watch("technologies");
+
+  // Adds a technology to the selected list
+  const addTechnology = (tech: string) => {
+    const currentTechs = form.getValues("technologies");
+    if (!currentTechs.includes(tech)) {
+      form.setValue("technologies", [...currentTechs, tech]);
+    }
+    setTechInput("");
+  };
+
+  // Removes a technology from the selected list
+  const removeTechnology = (tech: string) => {
+    const currentTechs = form.getValues("technologies");
+    form.setValue(
+      "technologies",
+      currentTechs.filter((t) => t !== tech)
+    );
+  };
 
   async function onSubmit(values: JobInfoFormData) {
     const action = jobInfo
@@ -128,6 +172,65 @@ export function JobInfoForm({
             )}
           />
         </div>
+
+        <FormField
+          control={form.control}
+          name="technologies"
+          render={() => (
+            <FormItem>
+              <FormLabel>Technologies</FormLabel>
+              <FormControl>
+                <div className="space-y-3">
+                  <Select
+                    value={techInput}
+                    onValueChange={(value) => {
+                      addTechnology(value);
+                    }}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select technologies..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {AVAILABLE_TECHNOLOGIES.filter(
+                        (tech) => !selectedTechs.includes(tech)
+                      ).map((tech) => (
+                        <SelectItem key={tech} value={tech}>
+                          {tech}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {selectedTechs.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {selectedTechs.map((tech) => (
+                        <Badge
+                          key={tech}
+                          variant="secondary"
+                          className="gap-1.5 pr-1"
+                        >
+                          {tech}
+                          <button
+                            type="button"
+                            onClick={() => removeTechnology(tech)}
+                            className="ml-0.5 rounded-sm hover:bg-secondary-foreground/20 transition-colors p-0.5"
+                            aria-label={`Remove ${tech}`}
+                          >
+                            <X className="size-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </FormControl>
+              <FormDescription>
+                Select the technologies relevant to this position.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <FormField
           control={form.control}
