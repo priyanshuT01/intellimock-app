@@ -69,6 +69,7 @@ export function JobInfoForm({
       description: "",
       experienceLevel: "junior",
       technologies: [],
+      hasResume: false,
     },
   });
 
@@ -111,6 +112,7 @@ export function JobInfoForm({
     setResumeFile(file);
     setIsParsingResume(true);
     setUseResumeMode(true);
+    form.setValue("hasResume", true);
 
     try {
       const formData = new FormData();
@@ -155,6 +157,7 @@ export function JobInfoForm({
     setResumeFile(null);
     setUseResumeMode(false);
     form.setValue("technologies", []);
+    form.setValue("hasResume", false);
   };
 
   async function onSubmit(values: JobInfoFormData) {
@@ -375,16 +378,31 @@ export function JobInfoForm({
           name="description"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Description</FormLabel>
+              <FormLabel>
+                Description
+                {!useResumeMode && (
+                  <span className="text-destructive ml-1">*</span>
+                )}
+                {useResumeMode && (
+                  <span className="text-muted-foreground text-sm font-normal ml-2">
+                    (Optional)
+                  </span>
+                )}
+              </FormLabel>
               <FormControl>
                 <Textarea
-                  placeholder="A Next.js 15 and React 19 full stack web developer job that uses Drizzle ORM and Postgres for database management."
+                  placeholder={
+                    useResumeMode
+                      ? "Add additional details about the role (optional since resume is uploaded)..."
+                      : "A Next.js 15 and React 19 full stack web developer job that uses Drizzle ORM and Postgres for database management."
+                  }
                   {...field}
                 />
               </FormControl>
               <FormDescription>
-                Be as specific as possible. The more information you provide,
-                the better the interviews will be.
+                {useResumeMode
+                  ? "Optional. Add any additional context not covered in your resume."
+                  : "Be as specific as possible. The more information you provide, the better the interviews will be."}
               </FormDescription>
               <FormMessage />
             </FormItem>
