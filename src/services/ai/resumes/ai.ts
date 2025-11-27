@@ -1,17 +1,17 @@
-import { JobInfoTable } from "@/drizzle/schema"
-import { streamObject } from "ai"
-import { google } from "../models/google"
-import { aiAnalyzeSchema } from "./schemas"
+import { JobInfoTable } from "@/drizzle/schema";
+import { streamObject } from "ai";
+import { google } from "../models/google";
+import { aiAnalyzeSchema } from "./schemas";
 
 export async function analyzeResumeForJob({
   resumeFile,
   jobInfo,
 }: {
-  resumeFile: File
+  resumeFile: File;
   jobInfo: Pick<
     typeof JobInfoTable.$inferSelect,
-    "title" | "experienceLevel" | "description"
-  >
+    "title" | "experienceLevel" | "description" | "technologies"
+  >;
 }) {
   return streamObject({
     model: google("gemini-2.5-flash"),
@@ -38,22 +38,28 @@ ${jobInfo.description}
 \`\`\`
 Experience Level: ${jobInfo.experienceLevel}
 ${jobInfo.title ? `\nJob Title: ${jobInfo.title}` : ""}
+${
+  jobInfo.technologies.length > 0
+    ? `\nRequired Technologies: ${jobInfo.technologies.join(", ")}`
+    : ""
+}
 
 Your task is to evaluate the resume against the job requirements and provide structured feedback using the following categories:
 
 1. **ats** - Analysis of how well the resume matches ATS (Applicant Tracking System) requirements.
    - Consider layout simplicity, use of standard section headings, avoidance of graphics or columns, consistent formatting, etc.
 
-2. **jobMatch** - Analysis of how well the resume aligns with the job description and experience level.
+2. **jobMatch** - Analysis of how well the resume aligns with the job description, required technologies, and experience level.
    - Assess skills, technologies, achievements, and relevance.
+   - Pay special attention to whether the candidate has experience with the required technologies.
 
 3. **writingAndFormatting** - Analysis of the writing quality, tone, grammar, clarity, and formatting.
    - Comment on structure, readability, section organization, and consistency.
    - Be sure to consider the wording and formatting of the job description when evaluating the resume so you can recommend specific wording or formatting changes that would improve the resume's alignment with the job requirements.
 
-4. **keywordCoverage** - Analysis of how well the resume includes keywords or terminology from the job description.
+4. **keywordCoverage** - Analysis of how well the resume includes keywords or terminology from the job description and required technologies.
    - Highlight missing or well-used terms that might help with ATS matching and recruiter readability.
-   - Be sure to consider the keywords used in the job description when evaluating the resume so you can recommend specific keywords that would improve the resume's alignment with the job requirements.
+   - Be sure to consider the keywords used in the job description and technology list when evaluating the resume so you can recommend specific keywords that would improve the resume's alignment with the job requirements.
 
 5. **other** - Any other relevant feedback not captured above.
    - This may include things like missing contact info, outdated technologies, major red flags, or career gaps.
@@ -76,5 +82,5 @@ Other Guidelines:
 - Refer to the candidate as "you" in your feedback. This feedback should be written as if you were speaking directly to the candidate.
 - Stop generating output as soon you have provided the full feedback.
 `,
-  })
+  });
 }

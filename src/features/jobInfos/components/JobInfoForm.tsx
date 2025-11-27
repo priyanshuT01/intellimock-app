@@ -24,7 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { X } from "lucide-react";
+import { X, Upload, FileText } from "lucide-react";
 import { jobInfoSchema } from "../schemas";
 import { formatExperienceLevel } from "../lib/formatters";
 import { LoadingSwap } from "@/components/ui/loading-swap";
@@ -73,6 +73,9 @@ export function JobInfoForm({
   });
 
   const [techInput, setTechInput] = useState("");
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [isParsingResume, setIsParsingResume] = useState(false);
+  const [useResumeMode, setUseResumeMode] = useState(false);
   const selectedTechs = form.watch("technologies");
 
   // Adds a technology to the selected list
@@ -91,6 +94,67 @@ export function JobInfoForm({
       "technologies",
       currentTechs.filter((t) => t !== tech)
     );
+  };
+
+  // Handles resume file upload and parsing
+  const handleResumeUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (file.type !== "application/pdf") {
+      toast.error("Please upload a PDF file");
+      return;
+    }
+
+    setResumeFile(file);
+    setIsParsingResume(true);
+    setUseResumeMode(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/parse-resume", {
+        method: "POST",
+        body: formData,
+        // Don't set Content-Type header - browser will set it with boundary for FormData
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("API Error:", errorText);
+        throw new Error(`Failed to parse resume: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log("API Response:", data);
+
+      // Extracts skills from the API response
+      if (data.skills && Array.isArray(data.skills)) {
+        form.setValue("technologies", data.skills);
+        toast.success(
+          `Found ${data.skills.length} technologies in your resume`
+        );
+      } else {
+        toast.warning("No technologies found in resume");
+      }
+    } catch (error) {
+      console.error("Error parsing resume:", error);
+      toast.error("Failed to parse resume. Please try again.");
+      setUseResumeMode(false);
+      setResumeFile(null);
+    } finally {
+      setIsParsingResume(false);
+    }
+  };
+
+  // Clears the resume and switches back to manual mode
+  const clearResume = () => {
+    setResumeFile(null);
+    setUseResumeMode(false);
+    form.setValue("technologies", []);
   };
 
   async function onSubmit(values: JobInfoFormData) {
@@ -180,12 +244,82 @@ export function JobInfoForm({
             <FormItem>
               <FormLabel>Technologies</FormLabel>
               <FormControl>
-                <div className="space-y-3">
+                <div className="space-y-4">
+                  {/* Resume Upload Section */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <label
+                        htmlFor="resume-upload"
+                        className={`flex items-center gap-2 px-4 py-2 border rounded-md cursor-pointer transition-colors ${
+                          useResumeMode || isParsingResume
+                            ? "bg-primary text-primary-foreground"
+                            : "hover:bg-accent"
+                        } ${isParsingResume ? "opacity-50" : ""}`}
+                      >
+                        <Upload className="size-4" />
+                        <span className="text-sm font-medium">
+                          {isParsingResume
+                            ? "Parsing Resume..."
+                            : resumeFile
+                            ? "Change Resume"
+                            : "Upload Resume"}
+                        </span>
+                      </label>
+                      <Input
+                        id="resume-upload"
+                        type="file"
+                        accept="application/pdf"
+                        className="hidden"
+                        onChange={handleResumeUpload}
+                        disabled={isParsingResume}
+                      />
+                      {resumeFile && (
+                        <div className="flex items-center gap-2 flex-1">
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <FileText className="size-4" />
+                            <span className="truncate max-w-xs">
+                              {resumeFile.name}
+                            </span>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={clearResume}
+                            disabled={isParsingResume}
+                          >
+                            <X className="size-4" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Upload your resume to automatically extract technologies,
+                      or manually select below.
+                    </p>
+                  </div>
+
+                  {/* Divider */}
+                  {!useResumeMode && (
+                    <div className="relative">
+                      <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t" />
+                      </div>
+                      <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-background px-2 text-muted-foreground">
+                          Or select manually
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Manual Selection */}
                   <Select
                     value={techInput}
                     onValueChange={(value) => {
                       addTechnology(value);
                     }}
+                    disabled={useResumeMode}
                   >
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select technologies..." />
@@ -201,6 +335,7 @@ export function JobInfoForm({
                     </SelectContent>
                   </Select>
 
+                  {/* Selected Technologies */}
                   {selectedTechs.length > 0 && (
                     <div className="flex flex-wrap gap-2">
                       {selectedTechs.map((tech) => (
@@ -215,6 +350,7 @@ export function JobInfoForm({
                             onClick={() => removeTechnology(tech)}
                             className="ml-0.5 rounded-sm hover:bg-secondary-foreground/20 transition-colors p-0.5"
                             aria-label={`Remove ${tech}`}
+                            disabled={useResumeMode}
                           >
                             <X className="size-3" />
                           </button>
@@ -225,7 +361,9 @@ export function JobInfoForm({
                 </div>
               </FormControl>
               <FormDescription>
-                Select the technologies relevant to this position.
+                {useResumeMode
+                  ? "Technologies extracted from your resume. Clear the resume to manually select."
+                  : "Select the technologies relevant to this position."}
               </FormDescription>
               <FormMessage />
             </FormItem>
