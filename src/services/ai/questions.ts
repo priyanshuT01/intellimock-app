@@ -50,7 +50,7 @@ Job Information:
 - Experience Level: \`${jobInfo.experienceLevel}\`
 ${jobInfo.title ? `\n- Job Title: \`${jobInfo.title}\`` : ""}
 ${
-  jobInfo.technologies.length > 0
+  jobInfo.technologies && jobInfo.technologies.length > 0
     ? `\n- Technologies: ${jobInfo.technologies.join(", ")}`
     : ""
 }

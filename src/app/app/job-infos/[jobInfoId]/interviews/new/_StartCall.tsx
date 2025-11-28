@@ -92,7 +92,7 @@ export function StartCall({
                   title: jobInfo.title || "Not Specified",
                   description: jobInfo.description,
                   experienceLevel: jobInfo.experienceLevel,
-                  technologies: jobInfo.technologies.join(", "),
+                  technologies: jobInfo.technologies?.join(", ") || "",
                 },
               },
             });
